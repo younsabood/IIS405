@@ -737,12 +737,14 @@ function resetQuiz() {
 
 function setEssayMode(mode) {
     essayMode = mode;
+    // Update ALL essay mode buttons (both in sidebar and dashboard)
     document.querySelectorAll('.essay-mode-btn').forEach(btn => {
-        btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-        btn.classList.add('bg-slate-100', 'text-slate-600');
+        if (btn.dataset.mode === mode) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     });
-    document.querySelector(`[data-mode="${mode}"]`).classList.remove('bg-slate-100', 'text-slate-600');
-    document.querySelector(`[data-mode="${mode}"]`).classList.add('active', 'bg-indigo-600', 'text-white');
 }
 
 // Start app when DOM is ready
