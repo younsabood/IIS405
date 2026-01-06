@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة اختبارات الحوسبة السحابية وقواعد البيانات | Exam Hub</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo for Arabic, Inter for English -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    
+    <!-- Mobile Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <nav class="sidebar-nav">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">نوع الأسئلة</div>
+                <button class="sidebar-item active" onclick="setQuizTypeFromSidebar('mcq')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    اختيار من متعدد
+                </button>
+                <button class="sidebar-item" onclick="setQuizTypeFromSidebar('essay')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    أسئلة مقالية
+                </button>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">طريقة التصحيح (للمقالي)</div>
+                <button class="sidebar-item essay-mode-btn active" data-mode="keyword" onclick="setEssayMode('keyword')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    الكلمات المفتاحية
+                </button>
+                <button class="sidebar-item essay-mode-btn" data-mode="self" onclick="setEssayMode('self')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    التقييم الذاتي
+                </button>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">روابط سريعة</div>
+                <button class="sidebar-item" onclick="goHome(); closeSidebar();">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    الصفحة الرئيسية
+                </button>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Header -->
+    <header id="mainHeader" class="main-header">
+        <div class="header-container">
+            <!-- Left Side: Back/Menu + Logo -->
+            <div class="header-left">
+                <!-- Back Button (Quiz Mode) -->
+                <button onclick="goHome()" id="homeBtn" class="header-btn back-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                
+                <!-- Burger Menu (Dashboard Mode) -->
+                <button id="menuToggle" class="header-btn burger-btn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                
+                <!-- Logo (Dashboard Mode) -->
+                <div id="headerLogo" class="header-logo-wrap">
+                    <div class="logo-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                    </div>
+                    <span class="logo-text">Cloud & DBA Hub</span>
+                </div>
+            </div>
+            
+            <!-- Center: Quiz Title (Quiz Mode) -->
+            <div id="headerQuizInfo" class="header-center">
+                <span id="headerQuizTitle" class="header-quiz-title"></span>
+                <span id="headerQuestionNum" class="header-quiz-num"></span>
+            </div>
+            
+            <!-- Right Side: Score (Quiz Mode) -->
+            <div id="headerScoreWrap" class="header-right">
+                <div class="score-box">
+                    <span id="headerScore" class="score-number">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div id="headerProgressBar" class="header-progress-wrap">
+            <div id="headerProgressFill" class="header-progress-bar"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-7xl">
+        
+        <!-- View 1: Dashboard (Quiz Selection) -->
+        <div id="dashboardView" class="fade-in">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-slate-800 mb-3">بنك الأسئلة الشامل</h2>
+                <p class="text-slate-600 max-w-2xl mx-auto">اختر فصلاً للبدء. تغطي هذه المنصة أساسيات الحوسبة السحابية وإدارة قواعد بيانات أوراكل المتقدمة (ADB).</p>
+            </div>
+            
+            <!-- Quiz Type Tabs (Desktop) -->
+            <div class="quiz-type-tabs max-w-md mx-auto mb-8">
+                <button class="quiz-type-tab active" data-type="mcq" onclick="setQuizType('mcq')">
+                    اختيار من متعدد
+                </button>
+                <button class="quiz-type-tab" data-type="essay" onclick="setQuizType('essay')">
+                    أسئلة مقالية
+                </button>
+            </div>
+            
+            <!-- Essay Mode Selector (when essay is selected) -->
+            <div id="essayModeSelector" class="hidden max-w-md mx-auto mb-8">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p class="text-amber-800 font-bold mb-3 text-sm">اختر طريقة التصحيح:</p>
+                    <div class="flex gap-2">
+                        <button class="essay-mode-btn flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition bg-indigo-600 text-white" data-mode="keyword" onclick="setEssayMode('keyword')">
+                            الكلمات المفتاحية
+                        </button>
+                        <button class="essay-mode-btn flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-100 text-slate-600" data-mode="self" onclick="setEssayMode('self')">
+                            التقييم الذاتي
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="quizGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Quizzes will be injected here dynamically -->
+            </div>
+        </div>
+
+        <!-- View 2: Quiz Interface -->
+        <div id="quizView" class="hidden fade-in quiz-view-container">
+
+            <!-- MCQ Question Card -->
+            <div id="mcqContainer" class="question-card-mobile">
+                <div class="question-content-mobile">
+                    <!-- Question Number Badge -->
+                    <div class="question-badge">
+                        <span id="qNumBadge">Q1</span>
+                    </div>
+                    
+                    <!-- English Question -->
+                    <div class="question-text-section">
+                        <h3 id="questionEn" class="question-en-mobile">
+                            Loading Question...
+                        </h3>
+                    </div>
+                    
+                    <!-- Arabic Translation (Hidden initially) -->
+                    <div class="question-ar-section">
+                        <h3 id="questionAr" class="question-ar-mobile translation-hidden">
+                            جاري تحميل السؤال...
+                        </h3>
+                    </div>
+
+                    <!-- Options Grid -->
+                    <div id="optionsContainer" class="options-container-mobile">
+                        <!-- Options injected here -->
+                    </div>
+                </div>
+
+                <!-- Explanation Footer (Hidden initially) -->
+                <div id="feedbackArea" class="hidden feedback-area-mobile">
+                    <div id="feedbackStatus" class="feedback-status-mobile">
+                        <!-- Correct/Wrong Icon & Text -->
+                    </div>
+                    <p id="feedbackText" class="feedback-text-mobile"></p>
+                    <button onclick="nextQuestion()" class="next-btn-mobile">
+                        <span>السؤال التالي</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Essay Question Card -->
+            <div id="essayContainer" class="hidden bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+                <div class="p-8">
+                    <!-- English Question -->
+                    <div class="mb-4 pb-4 border-b border-slate-100">
+                        <h3 id="essayQuestionEn" class="text-lg font-semibold text-slate-900 en-text leading-relaxed">
+                            Loading Question...
+                        </h3>
+                    </div>
+                    
+                    <!-- Arabic Translation (Hidden initially) -->
+                    <div class="mb-6">
+                        <h3 id="essayQuestionAr" class="text-lg text-indigo-900 font-medium leading-relaxed translation-hidden">
+                            جاري تحميل السؤال...
+                        </h3>
+                    </div>
+
+                    <!-- Answer Textarea -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">اكتب إجابتك:</label>
+                        <textarea id="essayAnswer" class="essay-textarea" placeholder="Write your answer here..." dir="ltr"></textarea>
+                    </div>
+                    
+                    <!-- Check Button -->
+                    <button id="essayCheckBtn" onclick="checkEssayAnswer()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition transform active:scale-[0.98]">
+                        تحقق من الإجابة
+                    </button>
+                </div>
+                
+                <!-- Essay Feedback Area -->
+                <div id="essayFeedbackArea" class="hidden p-6 border-t border-slate-200">
+                    
+                    <!-- Keyword Result -->
+                    <div id="keywordResult" class="hidden mb-6">
+                        <div class="keyword-result">
+                            <div class="keyword-result-header">
+                                <span class="text-slate-600 font-bold">الكلمات المفتاحية المطابقة:</span>
+                                <span id="keywordScore" class="keyword-score good">0/0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Self Evaluation -->
+                    <div id="selfEvaluation" class="hidden">
+                        <p class="text-slate-600 font-medium mb-4 text-center">قارن إجابتك مع الإجابة النموذجية، هل كانت صحيحة؟</p>
+                    </div>
+                    
+                    <!-- Model Answer -->
+                    <div class="model-answer mb-4">
+                        <div class="model-answer-title">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            الإجابة النموذجية:
+                        </div>
+                        <ul id="modelAnswerList" class="model-answer-list">
+                            <!-- Answers injected here -->
+                        </ul>
+                    </div>
+                    
+                    <!-- Explanation -->
+                    <div id="essayExplanation" class="explanation-box hidden mb-4">
+                        <div class="explanation-title">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            الشرح:
+                        </div>
+                        <p id="explanationTextEn" class="explanation-text en-text mb-2"></p>
+                        <p id="explanationTextAr" class="explanation-text"></p>
+                    </div>
+                    
+                    <!-- Self Eval Buttons (for self mode) -->
+                    <div id="selfEvalButtons" class="self-eval-buttons">
+                        <button onclick="selfEvalCorrect()" class="btn-correct">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            إجابتي صحيحة
+                        </button>
+                        <button onclick="selfEvalIncorrect()" class="btn-incorrect">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            إجابتي خاطئة
+                        </button>
+                    </div>
+                    
+                    <!-- Next Button (for keyword mode) -->
+                    <button id="essayNextBtn" onclick="nextQuestion()" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition transform active:scale-[0.98] mt-4">
+                        السؤال التالي
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 3: Results -->
+        <div id="resultsView" class="hidden max-w-2xl mx-auto text-center fade-in">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-10 mt-10">
+                <div class="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">انتهى الاختبار!</h2>
+                <p class="text-slate-500 mb-8">إليك ملخص أدائك في هذا الفصل</p>
+                
+                <div class="grid grid-cols-3 gap-4 mb-8">
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div class="text-xs uppercase tracking-wide text-slate-400 font-bold mb-1">النتيجة</div>
+                        <div id="finalScore" class="text-2xl font-black text-indigo-600">0/0</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div class="text-xs uppercase tracking-wide text-slate-400 font-bold mb-1">النسبة</div>
+                        <div id="finalPercent" class="text-2xl font-black text-green-600">0%</div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                        <div class="text-xs uppercase tracking-wide text-slate-400 font-bold mb-1">التقدير</div>
+                        <div id="finalGrade" class="text-xl font-black text-yellow-600">-</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 justify-center">
+                    <button onclick="resetQuiz()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-8 rounded-xl transition">
+                        إعادة المحاولة
+                    </button>
+                    <button onclick="goHome()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition hover:shadow-xl">
+                        اختيار اختبار آخر
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="container mx-auto px-4 py-6 text-center text-slate-400 text-sm">
+            &copy; 2025 Cloud Computing & Oracle DBA Exam Hub - منصة تعليمية شاملة
+        </div>
+    </footer>
+
+    <!-- Questions Data -->
+    <script src="mcq-questions-data.js"></script>
+    <script src="essay-questions-data.js"></script>
+    
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+    
+    <!-- Additional Helper Functions -->
+    <script>
+        // Quiz type setter for tabs
+        function setQuizType(type) {
+            quizType = type;
+            document.querySelectorAll('.quiz-type-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+            
+            // Show/hide essay mode selector
+            const essayModeSelector = document.getElementById('essayModeSelector');
+            if (essayModeSelector) {
+                essayModeSelector.classList.toggle('hidden', type === 'mcq');
+            }
+            
+            renderDashboard();
+        }
+        
+        // Quiz type setter from sidebar
+        function setQuizTypeFromSidebar(type) {
+            setQuizType(type);
+            closeSidebar();
+        }
+        
+        // Close sidebar
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('menuToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('open');
+            if (menuToggle) menuToggle.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+        }
+    </script>
+
+</body>
+</html>
