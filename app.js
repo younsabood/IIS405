@@ -12,10 +12,54 @@ let score = 0;
 let userAnswers = [];
 let quizType = 'mcq'; // 'mcq' or 'essay'
 let essayMode = 'keyword'; // 'keyword' or 'self'
+let isComprehensiveExam = false; // Comprehensive exam mode flag
+let shuffledQuestions = []; // Shuffled questions for current quiz
 
 // Multi-select state
 let selectedOptions = new Set();
 let isMultiSelect = false;
+
+// --- WRONG ANSWERS STORAGE ---
+const WRONG_ANSWERS_KEY = 'mcq_wrong_answers';
+
+function getWrongAnswers() {
+    try {
+        const stored = localStorage.getItem(WRONG_ANSWERS_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveWrongAnswer(question) {
+    const wrongAnswers = getWrongAnswers();
+    // Check if question already exists (by qEn)
+    const exists = wrongAnswers.some(q => q.qEn === question.qEn);
+    if (!exists) {
+        wrongAnswers.push(question);
+        localStorage.setItem(WRONG_ANSWERS_KEY, JSON.stringify(wrongAnswers));
+    }
+}
+
+function removeWrongAnswer(question) {
+    let wrongAnswers = getWrongAnswers();
+    wrongAnswers = wrongAnswers.filter(q => q.qEn !== question.qEn);
+    localStorage.setItem(WRONG_ANSWERS_KEY, JSON.stringify(wrongAnswers));
+}
+
+function clearWrongAnswers() {
+    localStorage.removeItem(WRONG_ANSWERS_KEY);
+}
+
+// --- UTILITY FUNCTIONS ---
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
 
 // --- DOM ELEMENTS ---
 const views = {
@@ -133,9 +177,35 @@ function renderDashboard() {
 function startQuiz(index) {
     const quizzes = quizType === 'mcq' ? mcqQuizzes : essayQuizzes;
     currentQuiz = quizzes[index];
+    isComprehensiveExam = false;
     currentQIndex = 0;
     score = 0;
-    userAnswers = new Array(currentQuiz.questions.length).fill(null);
+    
+    // For MCQ quizzes, shuffle questions and add wrong answers
+    if (quizType === 'mcq') {
+        let questions = [...currentQuiz.questions];
+        
+        // Shuffle the questions
+        shuffledQuestions = shuffleArray(questions);
+        
+        // Add wrong answers from localStorage (shuffled and inserted randomly)
+        const wrongAnswers = getWrongAnswers();
+        if (wrongAnswers.length > 0) {
+            const shuffledWrong = shuffleArray(wrongAnswers);
+            // Insert wrong answers at random positions
+            shuffledWrong.forEach(wq => {
+                // Check if question is not already in the shuffled list
+                if (!shuffledQuestions.some(q => q.qEn === wq.qEn)) {
+                    const randomPos = Math.floor(Math.random() * (shuffledQuestions.length + 1));
+                    shuffledQuestions.splice(randomPos, 0, wq);
+                }
+            });
+        }
+    } else {
+        shuffledQuestions = [...currentQuiz.questions];
+    }
+    
+    userAnswers = new Array(shuffledQuestions.length).fill(null);
     
     switchView('quiz');
     
@@ -161,8 +231,66 @@ function startQuiz(index) {
     renderQuestion();
 }
 
+// --- COMPREHENSIVE EXAM MODE ---
+function startComprehensiveExam() {
+    // Collect all MCQ questions from all chapters
+    let allQuestions = [];
+    mcqQuizzes.forEach(quiz => {
+        quiz.questions.forEach(q => {
+            allQuestions.push({...q, chapterId: quiz.id, chapterTitle: quiz.titleAr});
+        });
+    });
+    
+    // Add wrong answers from localStorage
+    const wrongAnswers = getWrongAnswers();
+    wrongAnswers.forEach(wq => {
+        if (!allQuestions.some(q => q.qEn === wq.qEn)) {
+            allQuestions.push(wq);
+        }
+    });
+    
+    // Shuffle all questions
+    allQuestions = shuffleArray(allQuestions);
+    
+    // Select 60 random questions (or all if less than 60)
+    const examSize = Math.min(60, allQuestions.length);
+    shuffledQuestions = allQuestions.slice(0, examSize);
+    
+    // Setup exam state
+    isComprehensiveExam = true;
+    currentQuiz = {
+        titleAr: 'الاختبار الشامل',
+        title: 'Comprehensive Exam',
+        questions: shuffledQuestions
+    };
+    currentQIndex = 0;
+    score = 0;
+    userAnswers = new Array(shuffledQuestions.length).fill(null);
+    quizType = 'mcq';
+    
+    switchView('quiz');
+    
+    // Enable quiz mode on body
+    document.body.classList.add('quiz-mode');
+    document.getElementById('homeBtn').classList.remove('hidden');
+    
+    // Update header with exam info
+    const headerQuizTitle = document.getElementById('headerQuizTitle');
+    if (headerQuizTitle) {
+        headerQuizTitle.innerText = 'الاختبار الشامل';
+    }
+    
+    // Hide essay mode selector
+    const essayModeSelector = document.getElementById('essayModeSelector');
+    if (essayModeSelector) {
+        essayModeSelector.classList.add('hidden');
+    }
+    
+    renderQuestion();
+}
+
 function renderQuestion() {
-    const q = currentQuiz.questions[currentQIndex];
+    const q = shuffledQuestions[currentQIndex];
     
     // Update UI State
     const scoreText = score.toString();
@@ -184,7 +312,7 @@ function renderQuestion() {
         qNumBadge.innerText = `Q${currentQIndex + 1}`;
     }
     
-    const progress = ((currentQIndex) / currentQuiz.questions.length) * 100;
+    const progress = ((currentQIndex) / shuffledQuestions.length) * 100;
     
     // Update both progress bars
     const progressBar = document.getElementById('progressBar');
@@ -334,7 +462,7 @@ function submitMultiMCQ() {
     // Hide submit button
     document.getElementById('mcqSubmitBtn').classList.add('hidden');
     
-    const q = currentQuiz.questions[currentQIndex];
+    const q = shuffledQuestions[currentQIndex];
     const correctKeys = Array.isArray(q.correct) ? q.correct : [q.correct];
     
     // Reveal Translations
@@ -393,13 +521,20 @@ function submitMultiMCQ() {
     const scoreEl1 = document.getElementById('headerScore');
     if (scoreEl1) scoreEl1.innerText = score;
     userAnswers[currentQIndex] = isWin;
+    
+    // Save wrong answer to localStorage or remove if correct
+    if (!isWin) {
+        saveWrongAnswer(q);
+    } else {
+        removeWrongAnswer(q);
+    }
 }
 
 function checkMCQAnswer(selectedKey, btnElement) {
     // Prevent multiple clicks
     if (!document.getElementById('feedbackArea').classList.contains('hidden')) return;
     
-    const q = currentQuiz.questions[currentQIndex];
+    const q = shuffledQuestions[currentQIndex];
     const correctKeys = Array.isArray(q.correct) ? q.correct : [q.correct];
     
     // Reveal Translations
@@ -470,6 +605,13 @@ function checkMCQAnswer(selectedKey, btnElement) {
     userAnswers[currentQIndex] = isWin;
     const scoreEl2 = document.getElementById('headerScore');
     if (scoreEl2) scoreEl2.innerText = score;
+    
+    // Save wrong answer to localStorage or remove if correct
+    if (!isWin) {
+        saveWrongAnswer(q);
+    } else {
+        removeWrongAnswer(q);
+    }
 }
 
 function revealTranslations() {
@@ -672,7 +814,7 @@ function showFeedback(isCorrect, text) {
 }
 
 function nextQuestion() {
-    if (currentQIndex < currentQuiz.questions.length - 1) {
+    if (currentQIndex < shuffledQuestions.length - 1) {
         currentQIndex++;
         renderQuestion();
     } else {
@@ -682,7 +824,7 @@ function nextQuestion() {
 
 function finishQuiz() {
     switchView('results');
-    const total = currentQuiz.questions.length;
+    const total = shuffledQuestions.length;
     const percent = Math.round((score / total) * 100);
     
     document.getElementById('finalScore').innerText = `${score}/${total}`;
@@ -729,9 +871,13 @@ function goHome() {
 }
 
 function resetQuiz() {
-    if (currentQuiz) {
+    if (isComprehensiveExam) {
+        startComprehensiveExam();
+    } else if (currentQuiz) {
         const index = (quizType === 'mcq' ? mcqQuizzes : essayQuizzes).indexOf(currentQuiz);
-        startQuiz(index);
+        if (index !== -1) {
+            startQuiz(index);
+        }
     }
 }
 
