@@ -14,6 +14,9 @@ let quizType = 'mcq'; // 'mcq' or 'essay'
 let essayMode = 'keyword'; // 'keyword' or 'self'
 let isComprehensiveExam = false; // Comprehensive exam mode flag
 let shuffledQuestions = []; // Shuffled questions for current quiz
+let wrongAnswersQueue = []; // Queue of wrong answers to retry in current quiz
+let mistakeCount = 0; // Total mistakes made in current quiz
+let totalQuestionsAnswered = 0; // Track total questions answered (including retries)
 
 // Multi-select state
 let selectedOptions = new Set();
@@ -180,6 +183,9 @@ function startQuiz(index) {
     isComprehensiveExam = false;
     currentQIndex = 0;
     score = 0;
+    wrongAnswersQueue = []; // Reset wrong answers queue
+    mistakeCount = 0; // Reset mistake count
+    totalQuestionsAnswered = 0; // Reset total questions answered
     
     // For MCQ quizzes, shuffle questions and add wrong answers
     if (quizType === 'mcq') {
@@ -265,6 +271,9 @@ function startComprehensiveExam() {
     };
     currentQIndex = 0;
     score = 0;
+    wrongAnswersQueue = []; // Reset wrong answers queue
+    mistakeCount = 0; // Reset mistake count
+    totalQuestionsAnswered = 0; // Reset total questions answered
     userAnswers = new Array(shuffledQuestions.length).fill(null);
     quizType = 'mcq';
     
@@ -514,20 +523,23 @@ function submitMultiMCQ() {
     if (isWin) {
         if (!userAnswers[currentQIndex]) score++;
         showFeedback(true, q.explanation);
+        // Remove from localStorage if answered correctly
+        removeWrongAnswer(q);
     } else {
+        // Add to wrong answers queue for retry within this quiz (MCQ only)
+        if (quizType === 'mcq') {
+            wrongAnswersQueue.push(q);
+            mistakeCount++;
+        }
         showFeedback(false, q.explanation);
+        // Save to localStorage for future quizzes
+        saveWrongAnswer(q);
     }
     
+    totalQuestionsAnswered++;
     const scoreEl1 = document.getElementById('headerScore');
     if (scoreEl1) scoreEl1.innerText = score;
     userAnswers[currentQIndex] = isWin;
-    
-    // Save wrong answer to localStorage or remove if correct
-    if (!isWin) {
-        saveWrongAnswer(q);
-    } else {
-        removeWrongAnswer(q);
-    }
 }
 
 function checkMCQAnswer(selectedKey, btnElement) {
@@ -601,15 +613,22 @@ function checkMCQAnswer(selectedKey, btnElement) {
         }, 300);
         
         showFeedback(false, q.explanation);
+        
+        // Add to wrong answers queue for retry within this quiz (MCQ only)
+        if (quizType === 'mcq') {
+            wrongAnswersQueue.push(q);
+            mistakeCount++;
+        }
+        // Save to localStorage for future quizzes
+        saveWrongAnswer(q);
     }
+    totalQuestionsAnswered++;
     userAnswers[currentQIndex] = isWin;
     const scoreEl2 = document.getElementById('headerScore');
     if (scoreEl2) scoreEl2.innerText = score;
     
-    // Save wrong answer to localStorage or remove if correct
-    if (!isWin) {
-        saveWrongAnswer(q);
-    } else {
+    // Remove from localStorage if answered correctly
+    if (isWin) {
         removeWrongAnswer(q);
     }
 }
@@ -814,21 +833,51 @@ function showFeedback(isCorrect, text) {
 }
 
 function nextQuestion() {
+    // For MCQ quizzes, check if there are wrong answers to retry
+    if (quizType === 'mcq' && currentQIndex >= shuffledQuestions.length - 1) {
+        // Check if there are questions in the wrong answers queue
+        if (wrongAnswersQueue.length > 0) {
+            // Move all wrong answers back to shuffledQuestions (shuffled)
+            const retryQuestions = shuffleArray([...wrongAnswersQueue]);
+            wrongAnswersQueue = []; // Clear the queue
+            shuffledQuestions = [...shuffledQuestions, ...retryQuestions];
+            userAnswers = [...userAnswers, ...new Array(retryQuestions.length).fill(null)];
+        }
+    }
+    
     if (currentQIndex < shuffledQuestions.length - 1) {
         currentQIndex++;
         renderQuestion();
     } else {
-        finishQuiz();
+        // Only finish if no more wrong answers to retry
+        if (wrongAnswersQueue.length === 0) {
+            finishQuiz();
+        } else {
+            // If somehow there are still wrong answers, process them
+            const retryQuestions = shuffleArray([...wrongAnswersQueue]);
+            wrongAnswersQueue = [];
+            shuffledQuestions = [...shuffledQuestions, ...retryQuestions];
+            userAnswers = [...userAnswers, ...new Array(retryQuestions.length).fill(null)];
+            currentQIndex++;
+            renderQuestion();
+        }
     }
 }
 
 function finishQuiz() {
     switchView('results');
     const total = shuffledQuestions.length;
+    const originalTotal = total - mistakeCount; // Original number of unique questions
     const percent = Math.round((score / total) * 100);
     
     document.getElementById('finalScore').innerText = `${score}/${total}`;
     document.getElementById('finalPercent').innerText = `${percent}%`;
+    
+    // Show mistake count
+    const mistakeEl = document.getElementById('finalMistakes');
+    if (mistakeEl) {
+        mistakeEl.innerText = mistakeCount;
+    }
     
     let grade = '';
     let color = '';
