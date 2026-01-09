@@ -895,3 +895,6 @@ function setEssayMode(mode) {
 
 // Start app when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
+
+// Expose functions globally for HTML onclick handlers
+window.startComprehensiveExam = startComprehensiveExam;
